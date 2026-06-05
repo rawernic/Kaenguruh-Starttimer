@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import * as Speech from 'expo-speech';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
@@ -88,6 +88,13 @@ function getAnnouncement(previousSeconds: number, currentSeconds: number): strin
   return null;
 }
 
+// iOS Safari blocks Web Speech API calls from timers/intervals.
+// A speak() call made directly within a user gesture handler unlocks it for that session.
+// A non-breaking space produces no audible output but satisfies iOS's user-gesture requirement.
+function unlockSpeech() {
+  Speech.speak('\u00A0', { language: 'de-DE' });
+}
+
 export default function App() {
   const [clockTime, setClockTime] = useState<Date>(new Date());
   const [activeStartId, setActiveStartId] = useState<string | null>(() => {
@@ -115,6 +122,9 @@ export default function App() {
     }
   });
 
+  // Ref to track previous remaining seconds for announcement logic outside of state updaters
+  const prevRemainingRef = useRef<number>(0);
+
   const activeStart = useMemo(
     () => REGATTA_START_TIMES.find((item) => item.id === activeStartId) ?? null,
     [activeStartId],
@@ -141,13 +151,12 @@ export default function App() {
         clearInterval(interval);
       }
 
-      setRemainingSeconds((previousSeconds: number) => {
-        const announcement = getAnnouncement(previousSeconds, nextSeconds);
-        if (announcement) {
-          Speech.speak(announcement, { language: 'de-DE' });
-        }
-        return nextSeconds;
-      });
+      const announcement = getAnnouncement(prevRemainingRef.current, nextSeconds);
+      if (announcement) {
+        Speech.speak(announcement, { language: 'de-DE' });
+      }
+      prevRemainingRef.current = nextSeconds;
+      setRemainingSeconds(nextSeconds);
     }, 1000);
 
     return () => {
@@ -192,7 +201,10 @@ export default function App() {
   const handleStart = (start: RegattaStartTime) => {
     const target = getTimestampForToday(start.hour, start.minute, start.second);
     const initialSeconds = Math.ceil((target - Date.now()) / 1000);
+    // Unlock iOS Safari Web Speech API by triggering a speak from within this user gesture
+    unlockSpeech();
     setActiveStartId(start.id);
+    prevRemainingRef.current = initialSeconds;
     setRemainingSeconds(initialSeconds);
     setTargetTimestamp(target);
   };
@@ -205,7 +217,10 @@ export default function App() {
       return;
     }
     const target = Date.now() + totalSeconds * 1000;
+    // Unlock iOS Safari Web Speech API by triggering a speak from within this user gesture
+    unlockSpeech();
     setActiveStartId(null);
+    prevRemainingRef.current = totalSeconds;
     setRemainingSeconds(totalSeconds);
     setTargetTimestamp(target);
   };
@@ -223,6 +238,7 @@ export default function App() {
   const handleReset = () => {
     setTargetTimestamp(null);
     setActiveStartId(null);
+    prevRemainingRef.current = 0;
     setRemainingSeconds(0);
     Speech.stop();
   };
@@ -292,6 +308,11 @@ export default function App() {
           <Text style={styles.subtitle}>
             {activeStart ? `Start um ${activeStart.label}` : 'Freier Countdown'}
           </Text>
+          {targetTimestamp !== null && (
+            <Text style={styles.targetTimeInfo}>
+              Zielzeit: {formatClockTime(new Date(targetTimestamp))}
+            </Text>
+          )}
           <Text style={styles.countdown}>{formatCountdown(remainingSeconds)}</Text>
           <Pressable style={styles.button} onPress={handleReset}>
             <Text style={styles.buttonLabel}>Stoppen</Text>
@@ -352,6 +373,12 @@ const styles = StyleSheet.create({
   },
   countdownContainer: {
     alignItems: 'center',
+  },
+  targetTimeInfo: {
+    fontSize: 15,
+    color: '#5a7fa8',
+    marginBottom: 6,
+    fontVariant: ['tabular-nums'],
   },
   countdown: {
     fontSize: 72,
