@@ -110,8 +110,8 @@ export default function App() {
   const [remainingSeconds, setRemainingSeconds] = useState<number>(
     () => getStoredTimerState().remainingSeconds,
   );
-  const [customMinutes, setCustomMinutes] = useState<string>('2');
-  const [customSeconds, setCustomSeconds] = useState<string>('0');
+  const [customMinutes, setCustomMinutes] = useState<string>('0');
+  const [customSeconds, setCustomSeconds] = useState<string>('32');
   const [offsetSeconds, setOffsetSeconds] = useState<number>(() => {
     try {
       const stored = localStorage.getItem('kaenguruh-offset');
