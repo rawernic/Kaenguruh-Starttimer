@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Känguru Start Timer",
-    "slug": "Känguru Start Timer",
+    "slug": "kaenguruh-starttimer",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -13,9 +13,11 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
+      "bundleIdentifier": "de.rawernic.kaenguruhstarttimer",
       "supportsTablet": true
     },
     "android": {
+      "package": "de.rawernic.kaenguruhstarttimer",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
